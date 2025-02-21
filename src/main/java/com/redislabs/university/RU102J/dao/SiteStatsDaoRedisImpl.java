@@ -2,7 +2,9 @@ package com.redislabs.university.RU102J.dao;
 
 import com.redislabs.university.RU102J.api.MeterReading;
 import com.redislabs.university.RU102J.api.SiteStats;
-import com.redislabs.university.RU102J.script.CompareAndUpdateScript;
+import com.redislabs.university.RU102J.exceptions.ScriptReadingException;
+import com.redislabs.university.RU102J.script.CompareAndUpdateScriptManager;
+
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.Transaction;
@@ -15,11 +17,11 @@ public class SiteStatsDaoRedisImpl implements SiteStatsDao {
 
     private final int weekSeconds = 60 * 60 * 24 * 7;
     private final JedisPool jedisPool;
-    private final CompareAndUpdateScript compareAndUpdateScript;
+    private final CompareAndUpdateScriptManager compareAndUpdateScriptManager;
 
-    public SiteStatsDaoRedisImpl(JedisPool jedisPool) {
+    public SiteStatsDaoRedisImpl(JedisPool jedisPool) throws ScriptReadingException {
         this.jedisPool = jedisPool;
-        this.compareAndUpdateScript = new CompareAndUpdateScript(jedisPool);
+        this.compareAndUpdateScriptManager = new CompareAndUpdateScriptManager(jedisPool);
     }
 
     // Returns the site stats for the current day
@@ -47,7 +49,7 @@ public class SiteStatsDaoRedisImpl implements SiteStatsDao {
             ZonedDateTime day = reading.getDateTime();
             String key = RedisSchema.getSiteStatsKey(siteId, day);
 
-            updateBasic(jedis, key, reading);
+            updateOptimized(jedis, key, reading);
         }
     }
 
@@ -80,8 +82,22 @@ public class SiteStatsDaoRedisImpl implements SiteStatsDao {
 
     // Challenge #3
     private void updateOptimized(Jedis jedis, String key, MeterReading reading) {
-        // START Challenge #3
-        // END Challenge #3
+        String reportingTime = ZonedDateTime.now(ZoneOffset.UTC).toString();
+        jedis.hset(key, SiteStats.reportingTimeField, reportingTime);
+        jedis.hincrBy(key, SiteStats.countField, 1);
+        jedis.expire(key, weekSeconds);
+
+
+        // get a transaction object from the jedis pool
+        Transaction transaction = jedis.multi();
+
+        // update maxWh, minWh, maxCapacity as a transaction
+        compareAndUpdateScriptManager.updateIfGreater(transaction, key, SiteStats.maxWhField, reading.getWhGenerated());
+        compareAndUpdateScriptManager.updateIfLess(transaction, key, SiteStats.minWhField, reading.getWhGenerated());
+        compareAndUpdateScriptManager.updateIfGreater(transaction, key, SiteStats.maxCapacityField, getCurrentCapacity(reading));
+
+        // send all three buffered commands to Redis and makes the responses available in our response objects
+        transaction.exec();
     }
 
     private Double getCurrentCapacity(MeterReading reading) {

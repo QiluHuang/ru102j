@@ -3,6 +3,7 @@ package com.redislabs.university.RU102J.script;
 import com.redislabs.university.RU102J.HostPort;
 import com.redislabs.university.RU102J.TestKeyManager;
 import com.redislabs.university.RU102J.dao.RedisSchema;
+import com.redislabs.university.RU102J.exceptions.ScriptReadingException;
 import org.junit.*;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -14,11 +15,11 @@ import java.time.ZonedDateTime;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class CompareAndUpdateScriptTest {
+public class CompareAndUpdateScriptManagerTest {
     private static JedisPool jedisPool;
     private static Jedis jedis;
     private static TestKeyManager keyManager;
-    private CompareAndUpdateScript cu;
+    private CompareAndUpdateScriptManager cu;
     private String key;
     private String field;
     private String emptyKey;
@@ -51,8 +52,8 @@ public class CompareAndUpdateScriptTest {
     }
 
     @Before
-    public void prepare() {
-        this.cu = new CompareAndUpdateScript(jedisPool);
+    public void prepare() throws ScriptReadingException {
+        this.cu = new CompareAndUpdateScriptManager(jedisPool);
         this.key = RedisSchema.getSiteStatsKey(1L, ZonedDateTime.now());
         this.emptyKey = RedisSchema.getSiteStatsKey(1000L, ZonedDateTime.now());
         this.field = "n";

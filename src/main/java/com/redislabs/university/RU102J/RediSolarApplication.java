@@ -4,6 +4,7 @@ import com.redislabs.redistimeseries.RedisTimeSeries;
 import com.redislabs.university.RU102J.command.LoadCommand;
 import com.redislabs.university.RU102J.command.RunCommand;
 import com.redislabs.university.RU102J.dao.*;
+import com.redislabs.university.RU102J.exceptions.ScriptReadingException;
 import com.redislabs.university.RU102J.health.RediSolarHealthCheck;
 import com.redislabs.university.RU102J.resources.*;
 import io.dropwizard.Application;
@@ -33,7 +34,7 @@ public class RediSolarApplication extends Application<RediSolarConfiguration> {
 
     @Override
     public void run(final RediSolarConfiguration configuration,
-                    final Environment environment) {
+                    final Environment environment) throws ScriptReadingException {
         RedisConfig redisConfig = configuration.getRedisConfig();
         JedisPool jedisPool;
         

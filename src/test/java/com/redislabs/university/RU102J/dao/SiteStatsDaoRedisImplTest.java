@@ -4,6 +4,7 @@ import com.redislabs.university.RU102J.HostPort;
 import com.redislabs.university.RU102J.TestKeyManager;
 import com.redislabs.university.RU102J.api.MeterReading;
 import com.redislabs.university.RU102J.api.SiteStats;
+import com.redislabs.university.RU102J.exceptions.ScriptReadingException;
 import org.junit.*;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -50,7 +51,7 @@ public class SiteStatsDaoRedisImplTest {
     }
 
     @Test
-    public void findById() {
+    public void findById() throws ScriptReadingException {
         MeterReading r1 = generateMeterReading(1);
         SiteStatsDao dao = new SiteStatsDaoRedisImpl(jedisPool);
         dao.update(r1);
@@ -62,7 +63,7 @@ public class SiteStatsDaoRedisImplTest {
 
     // Challenge #3
     @Test
-    public void testUpdate() {
+    public void testUpdate() throws ScriptReadingException {
         SiteStatsDao dao = new SiteStatsDaoRedisImpl(jedisPool);
         MeterReading r1 = generateMeterReading(1);
         r1.setWhGenerated(1.0);

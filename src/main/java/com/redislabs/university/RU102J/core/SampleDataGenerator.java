@@ -2,6 +2,7 @@ package com.redislabs.university.RU102J.core;
 
 import com.redislabs.university.RU102J.api.*;
 import com.redislabs.university.RU102J.dao.*;
+import com.redislabs.university.RU102J.exceptions.ScriptReadingException;
 import com.redislabs.university.RU102J.resources.MeterReadingResource;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -26,7 +27,7 @@ public class SampleDataGenerator {
      * current time and going back in time for the requested number
      * of days. The max number of permissible days is 365.
      */
-    public void generateHistorical(int days) {
+    public void generateHistorical(int days) throws ScriptReadingException {
         System.out.print("Generating sample historical data...");
         if (days < 0 || days > 365) {
             throw new IllegalArgumentException("Invalid days " + String.valueOf(days) +

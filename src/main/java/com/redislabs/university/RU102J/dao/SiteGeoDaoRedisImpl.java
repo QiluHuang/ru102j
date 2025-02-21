@@ -95,6 +95,7 @@ public class SiteGeoDaoRedisImpl implements SiteGeoDao {
         Double radius = query.getRadius();
         GeoUnit radiusUnit = query.getRadiusUnit();
 
+        // TODO: fix the issue that if the user put an "int-val" string which is converted to Double but failed the search
         try (Jedis jedis = jedisPool.getResource()) {
             List<GeoRadiusResponse> radiusResponses =
                     jedis.georadius(RedisSchema.getSiteGeoKey(), coord.getLng(),

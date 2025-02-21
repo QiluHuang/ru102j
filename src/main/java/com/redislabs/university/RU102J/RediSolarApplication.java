@@ -47,11 +47,9 @@ public class RediSolarApplication extends Application<RediSolarConfiguration> {
                 jedisPool = new JedisPool(redisConfig.getHost(), redisConfig.getPort());
         }
 
-        // To use the geospatial features, replace the following lines with:
-        // SiteGeoResource siteResource =
-        //        new SiteGeoResource(new SiteGeoDaoRedisImpl(jedisPool));
-        SiteResource siteResource =
-                new SiteResource(new SiteDaoRedisImpl(jedisPool));
+        // To use the geospatial features
+        SiteGeoResource siteResource =
+                new SiteGeoResource(new SiteGeoDaoRedisImpl(jedisPool));
         environment.jersey().register(siteResource);
 
         // For RedisTimeSeries: replace the next lines with

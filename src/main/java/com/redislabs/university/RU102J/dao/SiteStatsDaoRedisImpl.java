@@ -82,22 +82,20 @@ public class SiteStatsDaoRedisImpl implements SiteStatsDao {
 
     // Challenge #3
     private void updateOptimized(Jedis jedis, String key, MeterReading reading) {
-        String reportingTime = ZonedDateTime.now(ZoneOffset.UTC).toString();
-        jedis.hset(key, SiteStats.reportingTimeField, reportingTime);
-        jedis.hincrBy(key, SiteStats.countField, 1);
-        jedis.expire(key, weekSeconds);
+        try (Transaction trans = jedis.multi()) {
+            String reportingTime = ZonedDateTime.now(ZoneOffset.UTC).toString();
+            trans.hset(key, SiteStats.reportingTimeField, reportingTime);
+            trans.hincrBy(key, SiteStats.countField, 1);
+            trans.expire(key, weekSeconds);
 
+            // update maxWh, minWh, maxCapacity as a transaction
+            compareAndUpdateScriptManager.updateIfGreater(trans, key, SiteStats.maxWhField, reading.getWhGenerated());
+            compareAndUpdateScriptManager.updateIfLess(trans, key, SiteStats.minWhField, reading.getWhGenerated());
+            compareAndUpdateScriptManager.updateIfGreater(trans, key, SiteStats.maxCapacityField, getCurrentCapacity(reading));
 
-        // get a transaction object from the jedis pool
-        Transaction transaction = jedis.multi();
-
-        // update maxWh, minWh, maxCapacity as a transaction
-        compareAndUpdateScriptManager.updateIfGreater(transaction, key, SiteStats.maxWhField, reading.getWhGenerated());
-        compareAndUpdateScriptManager.updateIfLess(transaction, key, SiteStats.minWhField, reading.getWhGenerated());
-        compareAndUpdateScriptManager.updateIfGreater(transaction, key, SiteStats.maxCapacityField, getCurrentCapacity(reading));
-
-        // send all three buffered commands to Redis and makes the responses available in our response objects
-        transaction.exec();
+            // send all three buffered commands to Redis and makes the responses available in our response objects
+            trans.exec();
+        }
     }
 
     private Double getCurrentCapacity(MeterReading reading) {

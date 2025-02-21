@@ -51,8 +51,9 @@ public class MetricDaoRedisZsetImpl implements MetricDao {
         String metricKey = RedisSchema.getDayMetricKey(siteId, unit, dateTime);
         Integer minuteOfDay = getMinuteOfDay(dateTime);
 
-        // store value associated with minuteOfDay as the score
+        // store value associated with minuteOfDay as the score and delete them automatically after 30 days
         jedis.zadd(metricKey, minuteOfDay, value + ":" + minuteOfDay);
+        jedis.expire(metricKey, METRIC_EXPIRATION_SECONDS);
     }
 
     /**

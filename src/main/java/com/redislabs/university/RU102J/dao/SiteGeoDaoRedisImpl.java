@@ -60,42 +60,48 @@ public class SiteGeoDaoRedisImpl implements SiteGeoDao {
     }
 
     // Challenge #5
-     private Set<Site> findSitesByGeoWithCapacity(GeoQuery query) {
-         return Collections.emptySet();
-     }
+//     private Set<Site> findSitesByGeoWithCapacity(GeoQuery query) {
+//         return Collections.emptySet();
+//     }
     // Comment out the above, and uncomment what's below
-//    private Set<Site> findSitesByGeoWithCapacity(GeoQuery query) {
-//        Set<Site> results = new HashSet<>();
-//        Coordinate coord = query.getCoordinate();
-//        Double radius = query.getRadius();
-//        GeoUnit radiusUnit = query.getRadiusUnit();
-//
-//         try (Jedis jedis = jedisPool.getResource()) {
-//             // START Challenge #5
-//             // TODO: Challenge #5: Get the sites matching the geo query, store them
-//             // in List<GeoRadiusResponse> radiusResponses;
-//             // END Challenge #5
-//
-//             Set<Site> sites = radiusResponses.stream()
-//                     .map(response -> jedis.hgetAll(response.getMemberByString()))
-//                     .filter(Objects::nonNull)
-//                     .map(Site::new).collect(Collectors.toSet());
-//
-//             // START Challenge #5
-//             Pipeline pipeline = jedis.pipelined();
-//             Map<Long, Response<Double>> scores = new HashMap<>(sites.size());
-//             // TODO: Challenge #5: Add the code that populates the scores HashMap...
-//             // END Challenge #5
-//
-//             for (Site site : sites) {
-//                 if (scores.get(site.getId()).get() >= capacityThreshold) {
-//                     results.add(site);
-//                 }
-//             }
-//         }
-//
-//         return results;
-//    }
+    private Set<Site> findSitesByGeoWithCapacity(GeoQuery query) {
+        Set<Site> results = new HashSet<>();
+        Coordinate coord = query.getCoordinate();
+        Double radius = query.getRadius();
+        GeoUnit radiusUnit = query.getRadiusUnit();
+
+         try (Jedis jedis = jedisPool.getResource()) {
+             // Get the sites matching the geo query, store them in a list
+             List<GeoRadiusResponse> radiusResponses =
+                     jedis.georadius(RedisSchema.getSiteGeoKey(), coord.getLng(),
+                             coord.getLat(), radius, radiusUnit);
+
+             Set<Site> sites = radiusResponses.stream()
+                     .map(response -> jedis.hgetAll(response.getMemberByString()))
+                     .filter(Objects::nonNull)
+                     .map(Site::new).collect(Collectors.toSet());
+
+             // Get the score of a site using Redis pipeline
+             Pipeline pipeline = jedis.pipelined();
+             Map<Long, Response<Double>> scores = sites.stream()
+                     .collect(Collectors.toMap(
+                             Site::getId,
+                             site -> pipeline.zscore(
+                                     RedisSchema.getCapacityRankingKey(),
+                                     String.valueOf(site.getId())
+                             )
+                     ));
+             pipeline.sync();
+
+             for (Site site : sites) {
+                 if (scores.get(site.getId()).get() >= capacityThreshold) {
+                     results.add(site);
+                 }
+             }
+         }
+
+         return results;
+    }
 
     private Set<Site> findSitesByGeo(GeoQuery query) {
         Coordinate coord = query.getCoordinate();
